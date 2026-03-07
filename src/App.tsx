@@ -277,6 +277,16 @@ const PatientForm = ({ onSave, onCancel, initialData, config }: { onSave: (data:
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Leyenda Clínica */}
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-xl">
+            <div className="flex items-center space-x-3">
+              <Info size={20} className="text-blue-600 flex-shrink-0" />
+              <p className="text-sm text-blue-800 font-medium">
+                <span className="font-bold">Instrucción clínica:</span> En caso de coexistencia de varias situaciones o dispositivos dentro de un mismo dominio, se debe seleccionar siempre la opción con <span className="underline">mayor puntuación</span>.
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">ID Paciente / Iniciales</label>
@@ -318,9 +328,13 @@ const PatientForm = ({ onSave, onCancel, initialData, config }: { onSave: (data:
                 <div className="flex items-center space-x-2">
                   <label className="text-sm font-bold text-slate-800">{domain.name}</label>
                   <div className="group relative">
-                    <Info size={14} className="text-slate-400 cursor-help" />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
-                      {domain.description}
+                    <div className="cursor-help text-slate-400 hover:text-blue-500 transition-colors">
+                      <Info size={16} />
+                    </div>
+                    <div className="absolute bottom-full left-0 mb-2 w-72 p-4 bg-slate-900 text-white text-xs rounded-2xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none z-50 shadow-2xl border border-slate-700 backdrop-blur-sm">
+                      <div className="font-bold mb-1 text-blue-400 uppercase tracking-wider text-[10px]">{domain.name}</div>
+                      <p className="leading-relaxed opacity-90">{domain.description}</p>
+                      <div className="absolute top-full left-4 -mt-1 border-8 border-transparent border-t-slate-900"></div>
                     </div>
                   </div>
                 </div>
@@ -842,4 +856,3 @@ export default function App() {
     </div>
   );
 }
-

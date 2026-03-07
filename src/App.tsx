@@ -562,26 +562,53 @@ export default function App() {
   const fetchData = async () => {
     try {
       const [recRes, confRes] = await Promise.all([
-        fetch('/api/records'),
-        fetch('/api/config')
+        fetch('/api/records').catch(() => null),
+        fetch('/api/config').catch(() => null)
       ]);
-      const recs = await recRes.json();
-      const conf = await confRes.json();
-      setRecords(recs);
-      setConfig(conf);
+      
+      let recs = recRes ? await recRes.json() : [];
+      const conf = confRes ? await confRes.json() : DEFAULT_ICC_CONFIG;
+      
+      // Netlify Fallback: Load from localStorage
+      const localRecords = JSON.parse(localStorage.getItem('icc_records') || '[]');
+      const localConfig = JSON.parse(localStorage.getItem('icc_config') || 'null');
+
+      // Merge records (prefer server if available, but keep local)
+      const mergedRecords = [...recs, ...localRecords].reduce((acc: PatientRecord[], current: PatientRecord) => {
+        const exists = acc.find(item => item.id === current.id);
+        if (!exists) return acc.concat([current]);
+        return acc;
+      }, []);
+
+      setRecords(mergedRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setConfig(localConfig || conf || DEFAULT_ICC_CONFIG);
     } catch (e) {
-      console.error("Error fetching data", e);
+      console.error("Error fetching data, falling back to local storage", e);
+      const localRecords = JSON.parse(localStorage.getItem('icc_records') || '[]');
+      const localConfig = JSON.parse(localStorage.getItem('icc_config') || 'null');
+      setRecords(localRecords);
+      if (localConfig) setConfig(localConfig);
     } finally {
       setLoading(false);
     }
   };
 
   const saveRecord = async (data: PatientRecord) => {
-    await fetch('/api/records', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
+    // Always save to localStorage for Netlify/Static compatibility
+    const localRecords = JSON.parse(localStorage.getItem('icc_records') || '[]');
+    const updatedLocal = [data, ...localRecords.filter((r: any) => r.id !== data.id)];
+    localStorage.setItem('icc_records', JSON.stringify(updatedLocal));
+
+    try {
+      await fetch('/api/records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+    } catch (e) {
+      console.warn("Server storage unavailable, data saved to browser only");
+    }
+    
     await fetchData();
     setView('patients');
     setEditingRecord(undefined);
@@ -589,16 +616,32 @@ export default function App() {
 
   const deleteRecord = async (id: string) => {
     if (!confirm("¿Eliminar este registro?")) return;
-    await fetch(`/api/records/${id}`, { method: 'DELETE' });
+    
+    // Remove from localStorage
+    const localRecords = JSON.parse(localStorage.getItem('icc_records') || '[]');
+    localStorage.setItem('icc_records', JSON.stringify(localRecords.filter((r: any) => r.id !== id)));
+
+    try {
+      await fetch(`/api/records/${id}`, { method: 'DELETE' });
+    } catch (e) {
+      console.warn("Server delete unavailable");
+    }
     await fetchData();
   };
 
   const saveConfig = async (newConfig: ICCConfig) => {
-    await fetch('/api/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newConfig)
-    });
+    // Save to localStorage
+    localStorage.setItem('icc_config', JSON.stringify(newConfig));
+
+    try {
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig)
+      });
+    } catch (e) {
+      console.warn("Server config storage unavailable");
+    }
     await fetchData();
     alert("Configuración guardada correctamente");
   };
@@ -799,3 +842,4 @@ export default function App() {
     </div>
   );
 }
+

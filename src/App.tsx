@@ -32,6 +32,12 @@ import {
 import { ICCConfig, PatientRecord, UnitStats } from './types';
 import { DEFAULT_ICC_CONFIG, UNITS } from './constants';
 
+// --- CONEXIÓN A SUPABASE ---
+const supabaseUrl = 'https://vymcnxwynybrfezkvepw.supabase.co ';
+const supabaseKey = 'sb_publishable_FwYxHQrfh9_29hNoAcBn_g_1XbWT25C ';
+// @ts-ignore (esto es para que no te marque error de texto si usas TypeScript)
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
 // --- Components ---
 
 const Card = ({ children, className = "", ...props }: { children: React.ReactNode, className?: string, [key: string]: any }) => (
@@ -573,75 +579,83 @@ export default function App() {
     fetchData();
   }, []);
 
+// --- FUNCIONES CONECTADAS A SUPABASE ---
+
   const fetchData = async () => {
     try {
-      const [recRes, confRes] = await Promise.all([
-        fetch('/api/records').catch(() => null),
-        fetch('/api/config').catch(() => null)
-      ]);
-      
-      let recs = recRes ? await recRes.json() : [];
-      const conf = confRes ? await confRes.json() : DEFAULT_ICC_CONFIG;
-      
-      // Netlify Fallback: Load from localStorage
-      const localRecords = JSON.parse(localStorage.getItem('icc_records') || '[]');
-      const localConfig = JSON.parse(localStorage.getItem('icc_config') || 'null');
+      setLoading(true);
+      // @ts-ignore
+      const { data, error } = await supabase
+        .from('registros')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      // Merge records (prefer server if available, but keep local)
-      const mergedRecords = [...recs, ...localRecords].reduce((acc: PatientRecord[], current: PatientRecord) => {
-        const exists = acc.find(item => item.id === current.id);
-        if (!exists) return acc.concat([current]);
-        return acc;
-      }, []);
+      if (error) throw error;
 
-      setRecords(mergedRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-      setConfig(localConfig || conf || DEFAULT_ICC_CONFIG);
-    } catch (e) {
-      console.error("Error fetching data, falling back to local storage", e);
-      const localRecords = JSON.parse(localStorage.getItem('icc_records') || '[]');
+      const recs: PatientRecord[] = (data || []).map((item: any) => {
+        try {
+          const parsed = JSON.parse(item.contenido);
+          return { ...parsed, supabase_id: item.id };
+        } catch (e) {
+          return null;
+        }
+      }).filter(Boolean) as PatientRecord[];
+
+      setRecords(recs);
+
       const localConfig = JSON.parse(localStorage.getItem('icc_config') || 'null');
-      setRecords(localRecords);
       if (localConfig) setConfig(localConfig);
+
+    } catch (e) {
+      console.error("Error en Supabase:", e);
+      const localRecords = JSON.parse(localStorage.getItem('icc_records') || '[]');
+      setRecords(localRecords);
     } finally {
       setLoading(false);
     }
   };
 
-  const saveRecord = async (data: PatientRecord) => {
-    // Always save to localStorage for Netlify/Static compatibility
-    const localRecords = JSON.parse(localStorage.getItem('icc_records') || '[]');
-    const updatedLocal = [data, ...localRecords.filter((r: any) => r.id !== data.id)];
-    localStorage.setItem('icc_records', JSON.stringify(updatedLocal));
-
+  const saveRecord = async (patientData: PatientRecord) => {
     try {
-      await fetch('/api/records', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      // @ts-ignore
+      const { error } = await supabase
+        .from('registros')
+        .insert([{ 
+          contenido: JSON.stringify(patientData) 
+        }]);
+
+      if (error) throw error;
+      
+      alert("¡Guardado en la nube!");
+      await fetchData(); 
+      setView('patients');
+      setEditingRecord(undefined);
     } catch (e) {
-      console.warn("Server storage unavailable, data saved to browser only");
+      console.error(e);
+      alert("Error de conexión. Se guardará solo localmente.");
+      const localRecords = JSON.parse(localStorage.getItem('icc_records') || '[]');
+      localStorage.setItem('icc_records', JSON.stringify([patientData, ...localRecords]));
+      await fetchData();
     }
-    
-    await fetchData();
-    setView('patients');
-    setEditingRecord(undefined);
   };
 
   const deleteRecord = async (id: string) => {
-    if (!confirm("¿Eliminar este registro?")) return;
-    
-    // Remove from localStorage
-    const localRecords = JSON.parse(localStorage.getItem('icc_records') || '[]');
-    localStorage.setItem('icc_records', JSON.stringify(localRecords.filter((r: any) => r.id !== id)));
-
+    if (!confirm("¿Eliminar este registro de la nube?")) return;
     try {
-      await fetch(`/api/records/${id}`, { method: 'DELETE' });
+      // @ts-ignore
+      const { error } = await supabase
+        .from('registros')
+        .delete()
+        .filter('contenido', 'ilike', `%${id}%`);
+
+      if (error) throw error;
+      await fetchData();
     } catch (e) {
-      console.warn("Server delete unavailable");
+      console.error("Error al borrar:", e);
     }
-    await fetchData();
   };
+
+  // --- FIN DE FUNCIONES SUPABASE ---
 
   const downloadPatientsCSV = () => {
     if (records.length === 0) return alert("No hay datos para descargar");

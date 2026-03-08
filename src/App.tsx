@@ -643,6 +643,42 @@ export default function App() {
     await fetchData();
   };
 
+  const downloadPatientsCSV = () => {
+    if (records.length === 0) return alert("No hay datos para descargar");
+
+    const headers = ["Paciente", "Unidad/Cama", "ICC", "Categoria", "Alertas"];
+    const rows = records.map(r => {
+      const alerts = [];
+      if (r.alerts.vm) alerts.push("VM");
+      if (r.alerts.lpp) alerts.push("LPP");
+      if (r.alerts.fuga) alerts.push("Fuga");
+      if (r.alerts.aislamiento) alerts.push("Aislamiento");
+      
+      return [
+        r.patientId,
+        `${r.unit} / ${r.bed}`,
+        r.totalScore,
+        r.category,
+        alerts.join(" | ")
+      ];
+    });
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `ICC_Pacientes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const saveConfig = async (newConfig: ICCConfig) => {
     // Save to localStorage
     localStorage.setItem('icc_config', JSON.stringify(newConfig));
@@ -766,6 +802,14 @@ export default function App() {
                     />
                   </div>
                   <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={downloadPatientsCSV}
+                      className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-600 font-bold hover:bg-emerald-100 transition-all border border-emerald-100"
+                      title="Descargar Reporte"
+                    >
+                      <Download size={18} />
+                      <span className="hidden sm:inline">Descargar</span>
+                    </button>
                     <button className="p-2 rounded-xl hover:bg-slate-50 text-slate-500"><Filter size={20} /></button>
                   </div>
                 </div>

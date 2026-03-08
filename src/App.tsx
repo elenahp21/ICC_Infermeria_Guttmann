@@ -32,10 +32,10 @@ import {
 import { ICCConfig, PatientRecord, UnitStats } from './types';
 import { DEFAULT_ICC_CONFIG, UNITS } from './constants';
 
-// --- CONEXIÓN A SUPABASE ---
-const supabaseUrl = 'https://vymcnxwynybrfezkvepw.supabase.co ';
-const supabaseKey = 'sb_publishable_FwYxHQrfh9_29hNoAcBn_g_1XbWT25C ';
-// @ts-ignore (esto es para que no te marque error de texto si usas TypeScript)
+// --- CONEXIÓN LIMPIA ---
+const supabaseUrl = 'https://vymcnxwynybrfezkvepw.supabase.co'; // Sin espacio al final
+const supabaseKey = 'sb_publishable_FwYxHQrfh9_29hNoAcBn_g_1XbWT25C'; // Sin espacio al final
+// @ts-ignore
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // --- Components ---

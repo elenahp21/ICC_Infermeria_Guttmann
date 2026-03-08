@@ -741,12 +741,10 @@ export default function App() {
           </div>
 
           <div className="pt-6 border-t border-slate-100">
-            <div className="flex items-center space-x-3 p-2">
-              <div className="w-8 h-8 rounded-full bg-slate-200"></div>
-              <div>
-                <p className="text-sm font-bold text-slate-700">Enfermería</p>
-                <p className="text-xs text-slate-400">Turno Mañana</p>
-              </div>
+            <div className="p-2">
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
+                © - ehernandez 2026 - Todos los derechos reservados
+              </p>
             </div>
           </div>
         </div>

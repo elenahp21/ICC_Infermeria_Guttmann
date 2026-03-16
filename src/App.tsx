@@ -34,7 +34,7 @@ import { DEFAULT_ICC_CONFIG, UNITS } from './constants';
 
 // --- CONEXIÓN LIMPIA ---
 const supabaseUrl = 'https://vymcnxwynybrfezkvepw.supabase.co'; // Sin espacio al final
-const supabaseKey = 'sb_publishable_FwYxHQrfh9_29hNoAcBn_g_1XbWT25C'; // Sin espacio al final
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5bWNueHd5bnlicmZlemt2ZXB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MjI3MzQsImV4cCI6MjA4ODQ5ODczNH0.2oNfI8R_-gDNBIJ_cwEvzQHwgoMYk_d4WVOyHjBCtP8'; // Sin espacio al final
 // @ts-ignore
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 

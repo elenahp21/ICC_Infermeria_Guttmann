@@ -29,7 +29,26 @@ db.exec(`
     alerts TEXT NOT NULL,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
+
+// Seed admin user if empty
+const adminExists = db.prepare("SELECT id FROM users WHERE username = 'admin'").get();
+if (!adminExists) {
+  db.prepare("INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)").run(
+    Math.random().toString(36).substr(2, 9),
+    "admin",
+    "admin123",
+    "admin"
+  );
+}
 
 // Seed config if empty
 const configExists = db.prepare("SELECT id FROM config WHERE id = 1").get();
@@ -138,6 +157,49 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // User Management API
+  app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+    const user = db.prepare("SELECT id, username, role FROM users WHERE username = ? AND password = ?").get(username, password) as any;
+    if (user) {
+      res.json({ success: true, user });
+    } else {
+      res.status(401).json({ success: false, message: "Usuario o contraseña incorrectos" });
+    }
+  });
+
+  app.get("/api/users", (req, res) => {
+    const users = db.prepare("SELECT id, username, role, createdAt FROM users").all();
+    res.json(users);
+  });
+
+  app.post("/api/users", (req, res) => {
+    const { username, password, role } = req.body;
+    try {
+      const stmt = db.prepare("INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)");
+      stmt.run(Math.random().toString(36).substr(2, 9), username, password, role);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(400).json({ success: false, message: "El usuario ya existe" });
+    }
+  });
+
+  app.patch("/api/users/:id", (req, res) => {
+    const { password, role } = req.body;
+    if (password) {
+      db.prepare("UPDATE users SET password = ? WHERE id = ?").run(password, req.params.id);
+    }
+    if (role) {
+      db.prepare("UPDATE users SET role = ? WHERE id = ?").run(role, req.params.id);
+    }
+    res.json({ success: true });
+  });
+
+  app.delete("/api/users/:id", (req, res) => {
+    db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
   // Vite middleware
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -159,3 +221,4 @@ async function startServer() {
 }
 
 startServer();
+
